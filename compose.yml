@@ -1,0 +1,12 @@
+services:
+  idf:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+    working_dir: /source
+    volumes:
+      - .:/source:z
+      - root:/root
+    command: sleep infinity
+volumes:
+  root:

@@ -1,0 +1,16 @@
+{
+  "idf.currentSetup": "/opt/espressif/v6.0.2/esp-idf",
+  "idf.openOcdConfigs": [
+    "board/esp32c5-builtin.cfg"
+  ],
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c5"
+  },
+  "clangd.path": "/opt/espressif/tools/esp-clang/esp-20.1.1_20250829/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/source/build"
+  ],
+  "idf.flashType": "JTAG"
+}
