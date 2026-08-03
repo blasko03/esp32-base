@@ -14,7 +14,7 @@ int acs712_milliamperes(adc_config_t *adc) {
     esp_err_t err = adc_read_millivolts(adc, &millivolts);
     if (err != ESP_OK) {
         ESP_LOGI("MAIN", "ADC Raw Value: %d", millivolts);
-        return 0;
+        return ESP_FAIL;
     }
     return millivolts*MAX_CURRENT/MAX_MILLIVOLT;
 }
