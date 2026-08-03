@@ -12,6 +12,6 @@ typedef struct {
 } gpio_config_pin_t;
 
 gpio_config_pin_t gpio_out_configure_pin(gpio_num_t pin);
-void gpio_out_set_level(gpio_config_pin_t *config, uint32_t level);
+esp_err_t gpio_out_set_level(gpio_config_pin_t *config, uint32_t level);
 
 #endif 

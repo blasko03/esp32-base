@@ -35,7 +35,7 @@ gpio_config_pin_t gpio_out_configure_pin(gpio_num_t pin)
 
 esp_err_t gpio_out_set_level(gpio_config_pin_t *config, uint32_t level)
 {   
-    if (config != NULL || !config->init || config->mode != GPIO_MODE_OUTPUT) {
+    if (config == NULL || !config->init || config->mode != GPIO_MODE_OUTPUT) {
         ESP_LOGE(TAG, "Attempted to set level on uninitialized or NULL GPIO config");
         return ESP_FAIL;
     }
@@ -46,4 +46,5 @@ esp_err_t gpio_out_set_level(gpio_config_pin_t *config, uint32_t level)
 
     gpio_set_level(config->pin, level);
     config->level = level;
+    return ESP_OK;
 }
