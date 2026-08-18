@@ -45,6 +45,7 @@ esp_err_t gpio_out_set_level(gpio_config_pin_t *config, uint32_t level)
     }
 
     gpio_set_level(config->pin, level);
+    ESP_LOGI(TAG, "GPIO %d chsnged level from %d to %d", config->pin, config->level, level);
     config->level = level;
     return ESP_OK;
 }

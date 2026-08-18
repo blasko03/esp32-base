@@ -7,6 +7,13 @@ services:
     volumes:
       - .:/source:z
       - root:/root
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    group_add:
+      - keep-groups
+    security_opt:
+      - label=disable
     command: sleep infinity
+
 volumes:
   root:

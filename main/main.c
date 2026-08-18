@@ -3,27 +3,39 @@
 #include "esp_log.h"
 #include "io/gpio.h"
 #include "io/adc.h"
+#include "io/adc_cont.h"
 #include "devices/ACS712.h"
+#include "esp_timer.h"
+#include <math.h>
 
 static const char *TAG = "MAIN";
 
+gpio_config_pin_t gpio;
+
 void app_main(void)
 {
-    gpio_config_pin_t gpio = gpio_out_configure_pin(GPIO_NUM_24);
-    adc_config_t acs712 = acs712_init(ADC_UNIT_1, ADC_CHANNEL_0);
+    gpio = gpio_out_configure_pin(GPIO_NUM_24);
+    /*acs712_config acs712 = acs712_init(ADC_UNIT_1, ADC_CHANNEL_0, ONESHOT, AC);
 
     while (1) {
-        int mAh = acs712_milliamperes(&acs712);
-        if (mAh == ESP_FAIL) {
+        int64_t start_time = esp_timer_get_time();
+        int mVAC = acs712_millivolts_ac(&acs712.adc);
+        int64_t end_time = esp_timer_get_time(); 
+        ESP_LOGI(TAG, "acs712_millivolts_ac did take %lld microseconds", end_time - start_time);
+
+        if (mVAC == ESP_FAIL) {
             ESP_LOGE(TAG, "ACS712 Failed to read data");
         }
         else {
-            gpio_out_set_level(&gpio, mAh > 0);
+            ESP_LOGI(TAG, "ACS712 mesured mVAC %d", mVAC);
+            gpio_out_set_level(&gpio, mVAC > 60);
         }
 
-
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
-    adc_deinit(&acs712);
+    adc_deinit(&acs712.adc);*/
+
+    acs712_config acs712 = acs712_init(ADC_UNIT_1, ADC_CHANNEL_0, ACS712_CONTINUOUS, ACS712_AC);
+    acs712_start(&acs712, NULL);
 }

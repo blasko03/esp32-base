@@ -12,5 +12,6 @@
     "--query-driver=**",
     "--compile-commands-dir=/source/build"
   ],
-  "idf.flashType": "JTAG"
+  "idf.flashType": "UART",
+  "idf.port": "/dev/ttyACM0"
 }

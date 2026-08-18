@@ -2,9 +2,9 @@
 #include "esp_log.h"
 #include "esp_adc/adc_cali_scheme.h"
 
-static const char *TAG = "APP_ADC";
+static const char *TAG = "IO_ADC_ONESHOT";
 
-static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
+bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
     adc_cali_handle_t handle = NULL;
     esp_err_t ret = ESP_FAIL;
@@ -59,25 +59,26 @@ adc_config_t adc_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
     adc_config_t res = {
         .init = false,
         .channel = channel,
-        .handle = NULL,
-        .cali_handle = NULL
+        .handle_oneshot = NULL,
+        .cali_handle = NULL,
+        .zerovolt = 0
     };
 
     adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = unit,
     };
     
-    if (adc_oneshot_new_unit(&init_config, &res.handle) != ESP_OK) {
+    if (adc_oneshot_new_unit(&init_config, &res.handle_oneshot) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init ADC unit");
         return res; 
     }
 
     adc_oneshot_chan_cfg_t channel_config = {
-        .atten = ADC_ATTEN_DB_12,       // 0 to ~2.5V range (max 3.3V)
-        .bitwidth = ADC_BITWIDTH_12,    // 12-bit resolution (0-4095)
+        .atten = atten,
+        .bitwidth = ADC_BITWIDTH_12,
     };
     
-    if (adc_oneshot_config_channel(res.handle, channel, &channel_config) != ESP_OK) {
+    if (adc_oneshot_config_channel(res.handle_oneshot, channel, &channel_config) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to config ADC channel");
         return res; 
     }
@@ -89,8 +90,10 @@ adc_config_t adc_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
 
     res.init = true;
     ESP_LOGI(TAG, "ADC Unit %d Channel %d configured", unit, channel);
+
     return res;
 }
+
 
 esp_err_t adc_read_raw(adc_config_t *config, int *out_value)
 {
@@ -98,7 +101,7 @@ esp_err_t adc_read_raw(adc_config_t *config, int *out_value)
         return ESP_ERR_INVALID_STATE;
     }
 
-    return adc_oneshot_read(config->handle, config->channel, out_value);
+    return adc_oneshot_read(config->handle_oneshot, config->channel, out_value);
 }
 
 esp_err_t adc_read_millivolts(adc_config_t *config, int *out_mv)
@@ -108,7 +111,7 @@ esp_err_t adc_read_millivolts(adc_config_t *config, int *out_mv)
     }
 
     int raw = 0;
-    esp_err_t err = adc_oneshot_read(config->handle, config->channel, &raw);
+    esp_err_t err = adc_oneshot_read(config->handle_oneshot, config->channel, &raw);
     if (err != ESP_OK) {
         return err;
     }
@@ -132,12 +135,12 @@ void adc_deinit(adc_config_t *config)
             #endif
         }
 
-        if (config->handle != NULL) {
-            adc_oneshot_del_unit(config->handle);
+        if (config->handle_oneshot != NULL) {
+            adc_oneshot_del_unit(config->handle_oneshot);
         }
 
         config->init = false;
-        config->handle = NULL;
+        config->handle_oneshot = NULL;
         config->cali_handle = NULL;
     }
 }
