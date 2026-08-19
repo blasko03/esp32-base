@@ -17,7 +17,7 @@ bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t at
             .unit_id = unit,
             .chan = channel,
             .atten = atten,
-            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .bitwidth = ADC_BITWIDTH_12,
         };
         ret = adc_cali_create_scheme_curve_fitting(&cali_config, &handle);
         if (ret == ESP_OK) {
@@ -32,7 +32,7 @@ bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t at
         adc_cali_line_fitting_config_t cali_config = {
             .unit_id = unit,
             .atten = atten,
-            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .bitwidth = ADC_BITWIDTH_12,
         };
         ret = adc_cali_create_scheme_line_fitting(&cali_config, &handle);
         if (ret == ESP_OK) {
@@ -54,14 +54,12 @@ bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t at
 }
 
 
-adc_config_t adc_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
+adc_config_t adc_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten)
 {
     adc_config_t res = {
         .init = false,
-        .channel = channel,
         .handle_oneshot = NULL,
-        .cali_handle = NULL,
-        .zerovolt = 0
+        .cali_handle = NULL
     };
 
     adc_oneshot_unit_init_cfg_t init_config = {
@@ -77,13 +75,13 @@ adc_config_t adc_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
         .atten = atten,
         .bitwidth = ADC_BITWIDTH_12,
     };
-    
-    if (adc_oneshot_config_channel(res.handle_oneshot, channel, &channel_config) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to config ADC channel");
-        return res; 
+    for (int i = 0; i < channel_num; i++) {
+        if (adc_oneshot_config_channel(res.handle_oneshot, channel[i], &channel_config) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to config ADC channel");
+            return res; 
+        }
     }
-
-    bool cali_success = adc_calibration_init(unit, channel, atten, &res.cali_handle);
+    bool cali_success = adc_calibration_init(unit, channel[0], atten, &res.cali_handle);
     if (!cali_success) {
         res.cali_handle = NULL;
     }
@@ -95,23 +93,23 @@ adc_config_t adc_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
 }
 
 
-esp_err_t adc_read_raw(adc_config_t *config, int *out_value)
+esp_err_t adc_read_raw(adc_config_t *config, adc_channel_t channel, int *out_value)
 {
     if (config == NULL || out_value == NULL || !config->init) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    return adc_oneshot_read(config->handle_oneshot, config->channel, out_value);
+    return adc_oneshot_read(config->handle_oneshot, channel, out_value);
 }
 
-esp_err_t adc_read_millivolts(adc_config_t *config, int *out_mv)
+esp_err_t adc_read_millivolts(adc_config_t *config, adc_channel_t channel, int *out_mv)
 {
     if (config == NULL || out_mv == NULL || !config->init) {
         return ESP_ERR_INVALID_STATE;
     }
 
     int raw = 0;
-    esp_err_t err = adc_oneshot_read(config->handle_oneshot, config->channel, &raw);
+    esp_err_t err = adc_oneshot_read(config->handle_oneshot, channel, &raw);
     if (err != ESP_OK) {
         return err;
     }

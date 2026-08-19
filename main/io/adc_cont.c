@@ -13,7 +13,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include <math.h>
 
-#define READ_LEN                    3200
+#define READ_LEN 3200*2
 
 static const char *TAG = "IO_ADC_CONT";
 static TaskHandle_t s_task_handle;
@@ -23,11 +23,9 @@ static TaskHandle_t s_task_handle;
 static uint8_t result[READ_LEN] = {0};
 static adc_continuous_data_t parsed_data[MAX_PARSED_SAMPLES];
 
-adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten)
-{
+adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten) {
     adc_config_t res = {
         .init = false,
-        .channel = channel,
         .handle_oneshot = NULL,
         .cali_handle = NULL,
         .zerovolt = 0
@@ -46,15 +44,17 @@ adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t a
     };
 
     adc_digi_pattern_config_t adc_pattern[SOC_ADC_PATT_LEN_MAX] = {0};
-    dig_cfg.pattern_num = 1;
-    adc_pattern[0].atten = atten;
-    adc_pattern[0].channel = channel & 0x7;
-    adc_pattern[0].unit = unit;
-    adc_pattern[0].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
+    dig_cfg.pattern_num = channel_num;
+    for (int i = 0; i < channel_num; i++) {
+        adc_pattern[i].atten = atten;
+        adc_pattern[i].channel = channel[i] & 0x7;
+        adc_pattern[i].unit = unit;
+        adc_pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
 
-    ESP_LOGI(TAG, "adc_pattern[%d].atten is :%"PRIx8, 0, adc_pattern[0].atten);
-    ESP_LOGI(TAG, "adc_pattern[%d].channel is :%"PRIx8, 0, adc_pattern[0].channel);
-    ESP_LOGI(TAG, "adc_pattern[%d].unit is :%"PRIx8, 0, adc_pattern[0].unit);
+        ESP_LOGI(TAG, "adc_pattern[%d].atten is :%"PRIx8, 0, adc_pattern[i].atten);
+        ESP_LOGI(TAG, "adc_pattern[%d].channel is :%"PRIx8, 0, adc_pattern[i].channel);
+        ESP_LOGI(TAG, "adc_pattern[%d].unit is :%"PRIx8, 0, adc_pattern[i].unit);
+    }
     bool cali_success = adc_calibration_init(ADC_UNIT_1, adc_pattern[0].channel, atten, &res.cali_handle);
     if (!cali_success) {
         res.cali_handle = NULL;
@@ -75,7 +75,7 @@ static bool IRAM_ATTR s_conv_done_cb(adc_continuous_handle_t handle, const adc_c
     return (mustYield == pdTRUE);
 }
 
-void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on_data_start, AdcOnDataCompleted on_data_completed){
+void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on_data_start, AdcOnDataCompleted on_data_completed, void *user_data){
     esp_err_t ret;
     uint32_t ret_num = 0;
 
@@ -97,8 +97,9 @@ void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on
                 esp_err_t parse_ret = adc_continuous_parse_data(config->handle_continuous, result, ret_num, parsed_data, &num_parsed_samples);
                 if (parse_ret == ESP_OK) {                
                     uint32_t num_parsed_valid_samples = 0;
+
                     if(on_data_start != NULL)
-                        on_data_start(num_parsed_samples);
+                        on_data_start(num_parsed_samples, user_data);
                     for (int i = 0; i < num_parsed_samples; i++) {
                         if (parsed_data[i].valid) {
                             num_parsed_valid_samples++;
@@ -107,7 +108,7 @@ void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on
                                 adc_cali_raw_to_voltage(config->cali_handle, parsed_data[i].raw_data, &reading);
                             }
                             if(on_data != NULL)
-                                on_data(reading);
+                                on_data(reading, parsed_data[i].channel, user_data);
 
                         } else {
                             ESP_LOGW(TAG, "Invalid data [ADC%d_Ch%d_%"PRIu32"]",
@@ -117,7 +118,7 @@ void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on
                         }
                     }
                     if(on_data_completed != NULL)
-                        on_data_completed(num_parsed_valid_samples);
+                        on_data_completed(num_parsed_valid_samples, user_data);
                 } else {
                     ESP_LOGE(TAG, "Data parsing failed: %s", esp_err_to_name(parse_ret));
                 }
@@ -129,7 +130,6 @@ void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on
                  */
                 vTaskDelay(1);
             } else if (ret == ESP_ERR_TIMEOUT) {
-                //We try to read `EXAMPLE_READ_LEN` until API returns timeout, which means there's no available data
                 break;
             }
         }
