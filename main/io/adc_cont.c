@@ -13,28 +13,24 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include <math.h>
 
-#define READ_LEN 3200*2
-
 static const char *TAG = "IO_ADC_CONT";
 static TaskHandle_t s_task_handle;
 
 
-#define MAX_PARSED_SAMPLES (READ_LEN / SOC_ADC_DIGI_RESULT_BYTES)
-static uint8_t result[READ_LEN] = {0};
-static adc_continuous_data_t parsed_data[MAX_PARSED_SAMPLES];
-
-adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten) {
+adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten, uint32_t num_samples) {
+    uint32_t read_len = num_samples*SOC_ADC_DIGI_RESULT_BYTES*channel_num;
     adc_config_t res = {
         .init = false,
         .handle_oneshot = NULL,
         .cali_handle = NULL,
-        .zerovolt = 0
+        .parsed_data = calloc(read_len/SOC_ADC_DIGI_RESULT_BYTES, sizeof(adc_continuous_data_t)),
+        .result = calloc(read_len, sizeof(uint8_t)),
+        .read_len = read_len
     };
 
-
     adc_continuous_handle_cfg_t adc_config = {
-        .max_store_buf_size = READ_LEN*4,
-        .conv_frame_size = READ_LEN,
+        .max_store_buf_size = read_len*4,
+        .conv_frame_size = read_len,
     };
     ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &res.handle_continuous));
 
@@ -91,30 +87,30 @@ void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         while (1) {
-            ret = adc_continuous_read(config->handle_continuous, result, READ_LEN, &ret_num, 0);
+            ret = adc_continuous_read(config->handle_continuous, config->result, config->read_len, &ret_num, 0);
             if (ret == ESP_OK) {
                 uint32_t num_parsed_samples = 0;
-                esp_err_t parse_ret = adc_continuous_parse_data(config->handle_continuous, result, ret_num, parsed_data, &num_parsed_samples);
+                esp_err_t parse_ret = adc_continuous_parse_data(config->handle_continuous, config->result, ret_num, config->parsed_data, &num_parsed_samples);
                 if (parse_ret == ESP_OK) {                
                     uint32_t num_parsed_valid_samples = 0;
 
                     if(on_data_start != NULL)
                         on_data_start(num_parsed_samples, user_data);
                     for (int i = 0; i < num_parsed_samples; i++) {
-                        if (parsed_data[i].valid) {
+                        if (config->parsed_data[i].valid) {
                             num_parsed_valid_samples++;
-                            int reading = parsed_data[i].raw_data;
+                            int reading = config->parsed_data[i].raw_data;
                             if (config->cali_handle != NULL) {
-                                adc_cali_raw_to_voltage(config->cali_handle, parsed_data[i].raw_data, &reading);
+                                adc_cali_raw_to_voltage(config->cali_handle, config->parsed_data[i].raw_data, &reading);
                             }
                             if(on_data != NULL)
-                                on_data(reading, parsed_data[i].channel, user_data);
+                                on_data(reading, config->parsed_data[i].channel, user_data);
 
                         } else {
                             ESP_LOGW(TAG, "Invalid data [ADC%d_Ch%d_%"PRIu32"]",
-                                     parsed_data[i].unit + 1,
-                                     parsed_data[i].channel,
-                                     parsed_data[i].raw_data);
+                                     config->parsed_data[i].unit + 1,
+                                     config->parsed_data[i].channel,
+                                     config->parsed_data[i].raw_data);
                         }
                     }
                     if(on_data_completed != NULL)
@@ -154,5 +150,9 @@ void adc_cont_deinit(adc_config_t *config){
         config->init = false;
         config->handle_oneshot = NULL;
         config->cali_handle = NULL;
+        free(config->result);
+        free(config->parsed_data);
+        config->result = NULL;
+        config->parsed_data = NULL;
     }
 }

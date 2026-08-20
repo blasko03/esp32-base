@@ -12,8 +12,9 @@ typedef struct {
     adc_continuous_handle_t handle_continuous;
     adc_cali_handle_t cali_handle;
     adc_continuous_data_t* parsed_data;
+    uint8_t* result;
+    uint32_t read_len;
     bool init;
-    int zerovolt;
 } adc_config_t;
 
 adc_config_t adc_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten);

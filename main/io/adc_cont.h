@@ -3,7 +3,7 @@ typedef int (*AdcOnDataCompleted)(uint32_t, void*);
 typedef void (*AdcOnDataStarted)(uint32_t, void*);
 
 
-adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten);
+adc_config_t adc_cont_init(adc_unit_t unit, adc_channel_t *channel, uint8_t channel_num, adc_atten_t atten, uint32_t num_samples);
 
 void adc_cont_start(adc_config_t *config, AdcOnData on_data, AdcOnDataStarted on_data_start, AdcOnDataCompleted on_data_completed, void *user_data);
 

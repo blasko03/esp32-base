@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 
 static const int ORIGINAL_VOLTAGE = 5000;
-static const int SCALED_VOLTAGE = 3200;
+static const int SCALED_VOLTAGE = 3300;
 static const  int MIN_MILLIVOLT = 500;
 static const int MAX_MILLIVOLT = 4500;
 static const int MAX_CURRENT = 20000;
@@ -102,7 +102,7 @@ acs712_config acs712_init(adc_unit_t unit, adc_channel_t channel, adc_channel_t 
     int num_channles = channel_calibration == -1 ? 1 : 2;
     adc_channel_t channels[2] = {channel, channel_calibration};
     if(reading_type == ACS712_CONTINUOUS){
-        adc = adc_cont_init(unit, channels, num_channles, ADC_ATTEN_DB_12);
+        adc = adc_cont_init(unit, channels, num_channles, ADC_ATTEN_DB_12, N_SAMPLES);
     }
     if(reading_type == ACS712_ONESHOT){
         adc = adc_init(unit, channels, num_channles, ADC_ATTEN_DB_12);
@@ -116,8 +116,6 @@ acs712_config acs712_init(adc_unit_t unit, adc_channel_t channel, adc_channel_t 
         .reading_type = reading_type,
         .num_channles = num_channles
     };
-
-    ESP_LOGI(TAG, "Zero voltage was set to %d", config.adc.zerovolt);
 
     return config;
 }
