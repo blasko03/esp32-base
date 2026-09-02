@@ -1,7 +1,5 @@
 idf_component_register(SRCS "main.c" 
-                            "trans/wifi/wifi.c"
-                            "trans/bluetooth/gatt_svc.c"
-                            "trans/bluetooth/gap.c"
+                            "network/wifi/wifi.c"
                             "io/gpio.c"
                             "io/adc.c"
                             "io/adc_cont.c"
