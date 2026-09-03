@@ -71,3 +71,6 @@ managed_components
 esp-thread-br
 sdkconfig
 sdkconfig.old
+
+.idea/
+.vscode
