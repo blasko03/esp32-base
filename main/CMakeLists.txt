@@ -6,5 +6,5 @@ idf_component_register(SRCS "api/http.c"
                             "main.c" 
                             "network/wifi/wifi.c"
                     INCLUDE_DIRS "."
-                    REQUIRES bt nvs_flash esp_adc esp_http_server)
+                    REQUIRES nvs_flash esp_wifi esp_adc esp_http_server)
 
